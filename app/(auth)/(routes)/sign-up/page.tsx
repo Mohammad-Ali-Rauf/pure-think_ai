@@ -16,11 +16,24 @@ import {
 	FormLabel,
 	FormMessage,
 } from '@/components/ui/form'
+import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+	AlertDialogTrigger,
+  } from "@/components/ui/alert-dialog"
 import { signUpSchema } from '@/schemas'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
+import bcrypt from 'bcryptjs'
 
 import * as z from 'zod'
+import { db } from '@/lib/db'
 
 const SignupPage = () => {
 	const { data: session, status } = useSession()
@@ -60,7 +73,32 @@ const SignupPage = () => {
 							<form
 								noValidate
 								className='space-y-4 md:space-y-6'
-								onSubmit={form.handleSubmit((data) => console.log(data))}
+								onSubmit={form.handleSubmit(async ({ name, email, password }) => {
+									const hashedPassword = bcrypt.hash(password, 10)
+
+									const existingUser = await db.user.findUnique({
+										where: {
+											email,
+										},
+									})
+
+									if (existingUser) {
+										return form.setError('email', {
+											type: 'manual',
+											message: 'Email already in use.',
+										})
+									}
+
+									await db.user.create({
+										data: {
+											name,
+											email,
+											password: hashedPassword,
+										}
+									})
+
+									// TODO: Send email verification
+								})}
 							>
 								<FormField
 									control={form.control}
@@ -159,13 +197,34 @@ const SignupPage = () => {
 										</FormItem>
 									)}
 								/>
-
-								<button
+								<Button
+									disabled={form.formState.isSubmitting}
 									type='submit'
 									className='w-full text-white bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800'
 								>
 									Sign Up
-								</button>
+								</Button>
+
+								{form.formState.isSubmitted && (
+									<AlertDialog>
+									<AlertDialogTrigger>{form.formState.isSubmitted}</AlertDialogTrigger>
+									<AlertDialogContent>
+									  <AlertDialogHeader>
+										<AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+										<AlertDialogDescription>
+										  This action cannot be undone. This will permanently delete your account
+										  and remove your data from our servers.
+										</AlertDialogDescription>
+									  </AlertDialogHeader>
+									  <AlertDialogFooter>
+										<AlertDialogCancel>Cancel</AlertDialogCancel>
+										<AlertDialogAction>Continue</AlertDialogAction>
+									  </AlertDialogFooter>
+									</AlertDialogContent>
+								  </AlertDialog>
+								  
+								)}
+
 								<div className='flex flex-col sm:flex-row gap-3'>
 									<Button
 										className='w-full'

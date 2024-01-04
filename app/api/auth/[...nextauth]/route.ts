@@ -1,8 +1,9 @@
 import NextAuth from "next-auth/next";
 import Google from "next-auth/providers/google";
 import Github from "next-auth/providers/github";
+import { NextAuthOptions } from "next-auth";
 
-export const authOptions = {
+export const authOptions: NextAuthOptions = {
   pages: {
     signIn: "/sign-in",
   },
