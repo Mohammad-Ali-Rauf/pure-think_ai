@@ -8,6 +8,7 @@ import { FaGithub } from 'react-icons/fa'
 import { FcGoogle } from 'react-icons/fc'
 import { useRouter } from 'next/navigation'
 import { Input } from '@/components/ui/input'
+import axios from 'axios'
 import {
 	Form,
 	FormDescription,
@@ -26,7 +27,7 @@ import {
 	AlertDialogHeader,
 	AlertDialogTitle,
 	AlertDialogTrigger,
-  } from "@/components/ui/alert-dialog"
+} from '@/components/ui/alert-dialog'
 import { signUpSchema } from '@/schemas'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
@@ -39,6 +40,7 @@ const SignupPage = () => {
 	const { data: session, status } = useSession()
 	const { push } = useRouter()
 	const [loading, setLoading] = useState(false)
+	const [alert, setAlert] = useState(false)
 
 	const form = useForm<z.infer<typeof signUpSchema>>({
 		resolver: zodResolver(signUpSchema),
@@ -54,8 +56,6 @@ const SignupPage = () => {
 		if (status === 'authenticated' && session && !loading) {
 			setLoading(true)
 			push('/dashboard')
-			setLoading(false)
-		} else {
 			setLoading(false)
 		}
 	}, [session, status, push, loading])
@@ -73,32 +73,29 @@ const SignupPage = () => {
 							<form
 								noValidate
 								className='space-y-4 md:space-y-6'
-								onSubmit={form.handleSubmit(async ({ name, email, password }) => {
-									const hashedPassword = bcrypt.hash(password, 10)
+								onSubmit={form.handleSubmit(
+									async ({ name, email, password }) => {
+										try {
+											await fetch('/api/auth/register/', {
+												method: 'POST',
+												headers: {
+													'Content-Type': 'application/json',
+												},
+												body: JSON.stringify({
+													name,
+													email,
+													password,
+												}),
+											})
 
-									const existingUser = await db.user.findUnique({
-										where: {
-											email,
-										},
-									})
-
-									if (existingUser) {
-										return form.setError('email', {
-											type: 'manual',
-											message: 'Email already in use.',
-										})
-									}
-
-									await db.user.create({
-										data: {
-											name,
-											email,
-											password: hashedPassword,
+											setAlert(true)
+										} catch (error) {
+											console.log(error)
 										}
-									})
 
-									// TODO: Send email verification
-								})}
+										// TODO: Send email verification
+									}
+								)}
 							>
 								<FormField
 									control={form.control}
@@ -144,7 +141,9 @@ const SignupPage = () => {
 												placeholder='john.doe@example.com'
 												required
 											/>
-											<FormDescription>We will <b>never</b> share it with third parties.</FormDescription>
+											<FormDescription>
+												We will <b>never</b> share it with third parties.
+											</FormDescription>
 											<FormMessage />
 										</FormItem>
 									)}
@@ -205,24 +204,25 @@ const SignupPage = () => {
 									Sign Up
 								</Button>
 
-								{form.formState.isSubmitted && (
+								{alert && (
 									<AlertDialog>
-									<AlertDialogTrigger>{form.formState.isSubmitted}</AlertDialogTrigger>
-									<AlertDialogContent>
-									  <AlertDialogHeader>
-										<AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-										<AlertDialogDescription>
-										  This action cannot be undone. This will permanently delete your account
-										  and remove your data from our servers.
-										</AlertDialogDescription>
-									  </AlertDialogHeader>
-									  <AlertDialogFooter>
-										<AlertDialogCancel>Cancel</AlertDialogCancel>
-										<AlertDialogAction>Continue</AlertDialogAction>
-									  </AlertDialogFooter>
-									</AlertDialogContent>
-								  </AlertDialog>
-								  
+										<AlertDialogContent>
+											<AlertDialogHeader>
+												<AlertDialogTitle>
+													Are you absolutely sure?
+												</AlertDialogTitle>
+												<AlertDialogDescription>
+													This action cannot be undone. This will permanently
+													delete your account and remove your data from our
+													servers.
+												</AlertDialogDescription>
+											</AlertDialogHeader>
+											<AlertDialogFooter>
+												<AlertDialogCancel>Cancel</AlertDialogCancel>
+												<AlertDialogAction>Continue</AlertDialogAction>
+											</AlertDialogFooter>
+										</AlertDialogContent>
+									</AlertDialog>
 								)}
 
 								<div className='flex flex-col sm:flex-row gap-3'>

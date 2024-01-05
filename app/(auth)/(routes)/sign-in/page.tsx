@@ -1,4 +1,5 @@
 'use client'
+
 import React, { FormEvent, useEffect, useState } from 'react'
 import Link from 'next/link'
 
@@ -31,6 +32,7 @@ const SigninPage = () => {
 	const { data: session, status } = useSession()
 	const { push } = useRouter()
 	const [loading, setLoading] = useState(false)
+	const [alert, setAlert] = useState(false)
 
 	const form = useForm<z.infer<typeof loginSchema>>({
 		resolver: zodResolver(loginSchema),
@@ -44,8 +46,6 @@ const SigninPage = () => {
 		if (status === 'authenticated' && session && !loading) {
 			setLoading(true)
 			push('/dashboard')
-			setLoading(false)
-		} else {
 			setLoading(false)
 		}
 	}, [session, status, push, loading])
@@ -70,7 +70,28 @@ const SigninPage = () => {
 								<form
 									noValidate
 									className='space-y-4 md:space-y-6'
-									onSubmit={form.handleSubmit((data) => console.log(data))}
+									onSubmit={form.handleSubmit(
+										async ({ email, password }) => {
+											try {
+												await fetch('/api/auth/login/', {
+													method: 'POST',
+													headers: {
+														'Content-Type': 'application/json',
+													},
+													body: JSON.stringify({
+														email,
+														password,
+													}),
+												})
+	
+												setAlert(true)
+											} catch (error) {
+												console.log(error)
+											}
+	
+											// TODO: Send email verification
+										}
+		)}
 								>
 									<FormField
 										render={({ field, fieldState, formState }) => (
